@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atelier de régulation</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    (function () {
+      var stored = null;
+      try { stored = localStorage.getItem('regulation-lab:v1:theme'); } catch (error) { stored = null; }
+      var dark = stored ? stored === 'dark' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#code-section" id="skip-to-code">Aller au code Python</a>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <h1 class="brand-title">Atelier de régulation</h1>
+        <p class="brand-subtitle" id="system-subtitle"></p>
+      </div>
+    </div>
+    <nav class="tabs" id="system-tabs" role="tablist" aria-label="Choix du système"></nav>
+    <div class="topbar-actions">
+      <span class="status-pill" id="python-status" data-status="loading" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span><span class="status-text">Python : démarrage…</span>
+      </span>
+      <span class="status-pill mono" id="run-time" title="Durée du dernier calcul Python" aria-label="Durée du dernier calcul">— ms</span>
+      <button type="button" class="button button-ghost" id="theme-toggle" aria-label="Basculer entre thème clair et sombre" aria-pressed="false">
+        <span class="theme-icon" aria-hidden="true">◐</span><span class="theme-label">Clair</span>
+      </button>
+      <button type="button" class="button" id="reset-all" title="Remet les paramètres et le code du système par défaut">Réinitialiser</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" role="alert" hidden></div>
+
+  <main class="page">
+    <section class="panel hero" aria-labelledby="diagram-title">
+      <header class="hero-header">
+        <h2 class="panel-title" id="diagram-title">Schéma bloc</h2>
+        <span class="panel-hint">Cliquez un bloc pour l'expliquer · réglez ses paramètres dans le bloc · valeurs à l'instant k</span>
+      </header>
+      <div class="diagram" id="diagram"></div>
+      <div class="timeline" role="group" aria-label="Commande temporelle">
+        <div class="timeline-buttons">
+          <button type="button" class="button button-icon" id="step-back" title="Pas précédent" aria-label="Pas précédent">◀</button>
+          <button type="button" class="button play-button" id="play" aria-pressed="false" aria-label="Lecture ou pause de l'animation temporelle">
+            <span class="play-icon" aria-hidden="true">▶</span><span class="play-label">Lecture</span>
+          </button>
+          <button type="button" class="button button-icon" id="step-forward" title="Pas suivant" aria-label="Pas suivant">▶|</button>
+        </div>
+        <label class="visually-hidden" for="scrubber">Instant k sélectionné</label>
+        <input type="range" class="scrubber-range" id="scrubber" min="0" max="0" step="1" value="0">
+        <output class="scrubber-label mono" id="scrubber-label" for="scrubber">k = — · t = —</output>
+        <div class="timeline-options">
+          <label class="speed-control">
+            <span>Vitesse</span>
+            <select id="speed" class="select">
+              <option value="0.5">×0.5</option>
+              <option value="1" selected>×1</option>
+              <option value="2">×2</option>
+            </select>
+          </label>
+          <button type="button" class="button button-toggle" id="detailed-cycle" aria-pressed="false" title="Ralentit la lecture : une sous-étape du cycle à la fois">Cycle détaillé</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel explain" aria-labelledby="explain-title">
+      <header class="explain-head">
+        <h2 class="explain-title" id="explain-title">—</h2>
+        <span class="kind-badge" id="explain-kind"></span>
+        <span class="explain-tag" id="explain-tag"></span>
+        <button type="button" class="button button-ghost button-small" id="explain-follow" hidden>Suivre le cycle</button>
+      </header>
+      <div class="equations" id="explain-equations"></div>
+      <div class="block-info" id="explain-info"></div>
+    </section>
+
+    <div class="readouts" id="readouts" aria-label="Indicateurs globaux"></div>
+
+    <details class="panel fold about">
+      <summary><span class="panel-title" id="about-title">À propos</span></summary>
+      <div class="fold-body about-body" id="system-description"></div>
+    </details>
+
+    <section class="plots" id="plots" aria-label="Graphes"></section>
+
+    <details class="panel fold" id="params-section">
+      <summary>
+        <span class="panel-title">Paramètres de simulation</span>
+        <span class="fold-hint mono" id="params-summary"></span>
+      </summary>
+      <div class="fold-body">
+        <div class="fold-toolbar">
+          <span class="panel-hint">Les autres paramètres se règlent directement dans les blocs du schéma.</span>
+          <button type="button" class="button button-ghost button-small" id="reset-params">Tous les paramètres par défaut</button>
+        </div>
+        <div class="params" id="params-advanced"></div>
+      </div>
+    </details>
+
+    <details class="panel fold fold-code" id="code-section">
+      <summary>
+        <span class="panel-title">Code Python</span>
+        <span class="modified-badge" id="code-modified" hidden>modifié</span>
+        <span class="console-status mono fold-status" id="code-summary-status"></span>
+      </summary>
+      <div class="editor-toolbar">
+        <label class="switch">
+          <input type="checkbox" id="auto-run" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>Exécution auto</span>
+        </label>
+        <button type="button" class="button button-primary button-small" id="run" title="Exécuter (Ctrl+Entrée)">Exécuter</button>
+        <button type="button" class="button button-ghost button-small" id="reset-code">Réinitialiser le code</button>
+        <button type="button" class="button button-ghost button-small" id="download-code">Télécharger .py</button>
+      </div>
+      <div class="editor" id="editor"></div>
+      <div class="console">
+        <div class="console-header">
+          <h2 class="panel-title">Console</h2>
+          <span class="console-status mono" id="console-status" role="status" aria-live="polite"></span>
+        </div>
+        <pre class="console-output" id="console-output" tabindex="0" aria-label="Sortie de la console Python"></pre>
+      </div>
+    </details>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <script src="js/core/registry.js"></script>
+  <script src="js/core/python-runner.js"></script>
+  <script src="js/core/diagram.js"></script>
+  <script src="js/core/params.js"></script>
+  <script src="js/core/plots.js"></script>
+  <script src="js/core/editor.js"></script>
+  <script src="js/core/app.js"></script>
+
+  <script src="js/systems/kalman.js"></script>
+  <script src="js/systems/pid.js"></script>
+
+  <script>App.start();</script>
+</body>
+</html>
