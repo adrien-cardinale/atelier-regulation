@@ -13,9 +13,35 @@
 #    2. EN LIGNE, à chaque pas k :
 #       consigne x_ref -> commande u = −K (x − x_ref) + u_ff
 #       -> système (état x = [y, ẏ]) -> état mesuré -> retour
+#
+#  Une perturbation d(t) (force extérieure) s'ajoute à u sur la masse.
+#  Le régulateur ne la mesure pas : il ne la « voit » qu'à travers x.
 # =====================================================================
 
 import numpy as np
+
+
+# >>> block: disturbance
+# ---------------------------------------------------------------------
+#  Perturbation : une force extérieure en échelon
+# ---------------------------------------------------------------------
+#      d(t) = d · 1(t ≥ t_pert)
+#
+#  Nulle avant t_pert, égale à d ensuite (pensez à un poids posé sur la
+#  masse). Le régulateur ne la mesure pas et ne la connaît pas : elle
+#  n'apparaît pas dans le calcul de K.
+#
+#  Le retour d'état u = −K (x − x_ref) + u_ff n'a pas de mémoire (pas
+#  d'action intégrale). À l'équilibre, ẏ = 0 et le bilan des forces
+#  donne k·y = u + d, avec u = −K₀ (y − r) + k·r. On en tire l'erreur
+#  statique qui subsiste :
+#      Δy = y − r = d / (k + K₀)
+#  Plus K₀ est grand (q_pos grand, R petit), plus l'écart est faible,
+#  mais il ne s'annule jamais.
+
+def disturbance(t, p):
+    return np.where(t >= p["t_pert"], p["d_amp"], 0.0)
+# <<< block: disturbance
 
 
 # >>> block: plant
@@ -69,10 +95,6 @@ def discretize(A, B, dt):
     M[:n, n:] = B
     E = expm(M * dt)
     return E[:n, :n], E[:n, n:]              # A_d, B_d
-
-
-def disturbance(t, p):
-    return np.where(t >= p["t_pert"], p["d_amp"], 0.0)
 
 
 def plant_step(x, u, d, Ad, Bd):
@@ -208,7 +230,7 @@ def simulate(p):
 
     # --- Boucle fermée ---
     r = np.full(n, float(p["r0"]))
-    d = disturbance(t, p)
+    d_t = disturbance(t, p)                  # perturbation à chaque pas
     names = ["y", "v", "u", "u_unsat", "u_ff", "cost_inst", "x_err"]
     out = {name: np.zeros(n) for name in names}
 
@@ -222,10 +244,10 @@ def simulate(p):
         for name, value in zip(names, [x[0], x[1], u, u_unsat, u_ff, cost, x[0] - r[k]]):
             out[name][k] = value
 
-        x = plant_step(x, u, d[k], Ad, Bd)
+        x = plant_step(x, u, d_t[k], Ad, Bd)
 
     out.update({
-        "t": t, "r": r, "d": d,
+        "t": t, "r": r, "d_t": d_t,
         "cost_cum": np.cumsum(out["cost_inst"]),
         "K0": float(K[0, 0]), "K1": float(K[0, 1]),
         "iterations": iterations,
@@ -273,6 +295,7 @@ def simulate(p):
     '<p>Sans saturation, la boucle fermée est <strong>garantie stable</strong> : les pôles de A_d − B_d K sont dans le cercle unité. ',
     'Le LQR suppose l\'état complet connu. Quand on ne mesure que la position, un <strong>filtre de Kalman</strong> fournit cet état : Kalman + LQR forment la commande <strong>LQG</strong>. ',
     'Les deux problèmes sont duaux : même équation de Riccati, (A, B, Q, R) d\'un côté, (Fᵀ, Hᵀ, Q, R) de l\'autre.</p>',
+    '<p>À t = t_pert, une <strong>perturbation</strong> d (force extérieure en échelon) s\'applique sur la masse : la sortie s\'écarte de la consigne et y reste, avec une erreur statique Δy = d / (k + K₀). Le trait pointillé des graphes marque cet instant.</p>',
     '<p>Essayez : R très grand (commande douce et lente), q_pos très grand (réponse rapide, mais la commande sature), une perturbation d (l\'erreur statique ne s\'annule pas : il n\'y a pas d\'action intégrale). ',
     'Question ouverte : comment ajouter une action intégrale au LQR ?</p>'
   ].join('');
@@ -316,8 +339,8 @@ def simulate(p):
       { id: 'r_weight', label: 'Poids de la commande', symbol: 'R', unit: '', min: 0.001, max: 100, step: 0.001, default: 0.1, group: 'Pondérations', block: 'riccati', log: true },
       { id: 'u_max', label: 'Saturation de la commande', symbol: 'u_max', unit: 'N', min: 0.5, max: 100, step: 0.5, default: 10, group: 'Commande', block: 'controller' },
       { id: 'r0', label: 'Consigne', symbol: 'r₀', unit: 'm', min: -5, max: 5, step: 0.1, default: 1, group: 'Consigne et perturbation', block: 'reference' },
-      { id: 't_pert', label: 'Instant de la perturbation', symbol: 't_pert', unit: 's', min: 0, max: 30, step: 0.1, default: 6, group: 'Consigne et perturbation', block: 'plant', advanced: true },
-      { id: 'd_amp', label: 'Amplitude de la perturbation', symbol: 'd', unit: 'N', min: -20, max: 20, step: 0.5, default: -5, group: 'Consigne et perturbation', block: 'plant', advanced: true },
+      { id: 't_pert', label: 'Instant de la perturbation', symbol: 't_pert', unit: 's', min: 0, max: 30, step: 0.1, default: 6, group: 'Consigne et perturbation', block: 'disturbance' },
+      { id: 'd_amp', label: 'Amplitude de la perturbation', symbol: 'd', unit: 'N', min: -20, max: 20, step: 0.5, default: -5, group: 'Consigne et perturbation', block: 'disturbance' },
       { id: 'm', label: 'Masse', symbol: 'm', unit: 'kg', min: 0.1, max: 10, step: 0.1, default: 1, group: 'Système', block: 'plant' },
       { id: 'c', label: 'Amortissement', symbol: 'c', unit: 'N·s/m', min: 0, max: 10, step: 0.1, default: 0.5, group: 'Système', block: 'plant' },
       { id: 'k', label: 'Raideur du ressort', symbol: 'k', unit: 'N/m', min: 0, max: 20, step: 0.1, default: 2, group: 'Système', block: 'plant' },
@@ -345,6 +368,12 @@ def simulate(p):
           info: '<p>Calcul <strong>hors ligne</strong>, une seule fois avant la simulation. Les matrices sont discrètes : A = A_d, B = B_d (affichées dans la console Python).</p><p>Q = diag(q_pos, q_vel) pénalise l\'écart d\'état, R pénalise la commande. Seul le <strong>rapport</strong> Q / R compte. On itère l\'équation de Riccati à partir de P = Q jusqu\'à ce que P ne bouge plus, puis on en déduit le gain K.</p>'
         },
         {
+          id: 'disturbance', title: 'Perturbation', kind: 'io', x: 674, row: 0, w: 216, h: 120,
+          lines: ['d(t) = d · 1(t ≥ t_pert)'],
+          readouts: [{ label: 'd', key: 'd_t', format: 2 }],
+          info: '<p>Une <strong>force extérieure</strong> en échelon, nulle avant t_pert et égale à d ensuite. Le régulateur ne la mesure pas : il ne la voit qu\'à travers l\'état x.</p><p>Sans action intégrale, le LQR ne l\'annule pas : une <strong>erreur statique</strong> Δy = d / (k + K₀) subsiste. Un PID l\'annule grâce à son terme intégral.</p>'
+        },
+        {
           id: 'reference', title: 'Consigne', kind: 'io', x: 28, row: 1, w: 190, h: 150,
           lines: ['x_ref = [r, 0]', 'u_ff = k r'],
           readouts: [{ label: 'r', key: 'r', format: 3 }, { label: 'u_ff', key: 'u_ff', format: 3 }],
@@ -360,7 +389,7 @@ def simulate(p):
           id: 'plant', title: 'Masse-ressort', kind: 'process', x: 644, row: 1, w: 276, h: 150,
           lines: ['m ÿ + c ẏ + k y = u + d(t)', 'x[k+1] = A_d x + B_d (u + d)'],
           readouts: [{ label: 'y', key: 'y', format: 3 }, { label: 'ẏ', key: 'v', format: 3 }],
-          info: '<p>Le système à commander, identique à celui du PID. Avec x = [y, ẏ] : A = [[0, 1], [−k/m, −c/m]], B = [0, 1/m].</p><p>La discrétisation est <strong>exacte</strong> (commande constante sur dt) : A_d = exp(A dt), calculée par série de Taylor. La perturbation d(t) et l\'état initial se règlent dans « Paramètres de simulation ».</p>'
+          info: '<p>Le système à commander, identique à celui du PID. Avec x = [y, ẏ] : A = [[0, 1], [−k/m, −c/m]], B = [0, 1/m].</p><p>La discrétisation est <strong>exacte</strong> (commande constante sur dt) : A_d = exp(A dt), calculée par série de Taylor. La perturbation d(t) s\'ajoute à u. L\'état initial se règle dans « Paramètres de simulation ».</p>'
         },
         {
           id: 'state', title: 'État mesuré', kind: 'measure', x: 1000, row: 1, w: 176, h: 150,
@@ -373,6 +402,7 @@ def simulate(p):
         { from: 'riccati', to: 'controller', label: 'K', fromSide: 'bottom', toSide: 'top', readout: { key: 'K0', format: 3 } },
         { from: 'reference', to: 'controller', label: 'x_ref', readout: { key: 'r', format: 3 } },
         { from: 'controller', to: 'plant', label: 'u', readout: { key: 'u', format: 3 } },
+        { from: 'disturbance', to: 'plant', label: 'd', fromSide: 'bottom', toSide: 'top', readout: { key: 'd_t', format: 2 } },
         { from: 'plant', to: 'state', label: 'x' },
         { from: 'state', to: 'controller', label: 'x', fromSide: 'bottom', toSide: 'bottom', loop: true, readout: { key: 'y', format: 3 } }
       ]
@@ -380,6 +410,7 @@ def simulate(p):
     plots: [
       {
         id: 'output', title: 'Sortie et consigne', xKey: 't', yLabel: 'position (m)',
+        vlines: [{ key: 't_pert', label: 'perturbation' }],
         traces: [
           { key: 'r', name: 'Consigne r', kind: 'step', color: 'truth', width: 1.5 },
           { key: 'y', name: 'Sortie y', kind: 'line', color: 'series-1' }
@@ -390,11 +421,13 @@ def simulate(p):
         traces: [{ key: 'v', name: 'Vitesse ẏ', kind: 'line', color: 'series-1' }]
       },
       {
-        id: 'command', title: 'Commande u (lignes : ±u_max)', xKey: 't', yLabel: 'force (N)',
+        id: 'command', title: 'Commande u et perturbation d (lignes : ±u_max)', xKey: 't', yLabel: 'force (N)',
         hlines: [{ value: 'u_max' }, { value: 'u_max', scale: -1 }],
+        vlines: [{ key: 't_pert', label: 'perturbation' }],
         traces: [
           { key: 'u_unsat', name: 'Avant saturation', kind: 'line', color: 'muted', width: 1.5 },
-          { key: 'u', name: 'Commande u', kind: 'line', color: 'series-1' }
+          { key: 'u', name: 'Commande u', kind: 'line', color: 'series-1' },
+          { key: 'd_t', name: 'Perturbation d', kind: 'step', color: 'muted', width: 1.5, dash: 'dash' }
         ]
       },
       {

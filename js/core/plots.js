@@ -134,6 +134,29 @@
     }));
   }
 
+  function eventTimes(spec, result) {
+    return (spec.vlines || [])
+      .map((line) => ({ time: Number(result[line.key]), label: line.label || '' }))
+      .filter((line) => Number.isFinite(line.time));
+  }
+
+  function eventShapes(events, theme) {
+    return events.map((event) => ({
+      type: 'line', xref: 'x', yref: 'paper', x0: event.time, x1: event.time, y0: 0, y1: 1,
+      line: { color: theme.colors.muted, width: 1.25, dash: 'longdash' }, layer: 'below'
+    }));
+  }
+
+  function eventAnnotations(events, theme) {
+    return events.filter((event) => event.label).map((event) => ({
+      x: event.time, xref: 'x', xanchor: 'left', xshift: 3,
+      y: 1, yref: 'paper', yanchor: 'top',
+      text: event.label, showarrow: false,
+      font: { size: 10, color: theme.muted, family: theme.font },
+      bgcolor: withAlpha(theme.surface, 0.7)
+    }));
+  }
+
   function markerShape(time, theme) {
     return {
       type: 'line', xref: 'x', yref: 'paper', x0: time, x1: time, y0: 0, y1: 1,
@@ -149,7 +172,7 @@
     };
   }
 
-  function buildLayout(spec, theme, shapes, showLegend, revision) {
+  function buildLayout(spec, theme, shapes, annotations, showLegend, revision) {
     return {
       height: PLOT_HEIGHT,
       margin: { l: 52, r: 12, t: showLegend ? 30 : 10, b: 38 },
@@ -163,6 +186,7 @@
       xaxis: Object.assign(axis(theme, spec.xLabel || 't (s)'), { spikemode: 'across', spikecolor: theme.axis, spikethickness: 1 }),
       yaxis: axis(theme, spec.yLabel || ''),
       shapes: shapes,
+      annotations: annotations,
       uirevision: revision
     };
   }
@@ -247,8 +271,9 @@
       lastResult = result;
       views.forEach((view) => {
         const traces = buildTraces(view.spec, result, theme, missing);
-        view.fixedShapes = referenceShapes(view.spec, result, theme);
-        const layout = buildLayout(view.spec, theme, shapesFor(view), legendEntryCount(traces) > 1, revision);
+        const events = eventTimes(view.spec, result);
+        view.fixedShapes = referenceShapes(view.spec, result, theme).concat(eventShapes(events, theme));
+        const layout = buildLayout(view.spec, theme, shapesFor(view), eventAnnotations(events, theme), legendEntryCount(traces) > 1, revision);
         window.Plotly.react(view.element, traces, layout, { responsive: true, displaylogo: false, displayModeBar: 'hover', modeBarButtonsToRemove: MODE_BAR_REMOVED });
         view.element.dataset.rendered = '1';
       });

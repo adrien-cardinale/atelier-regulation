@@ -58,7 +58,7 @@ Sous 700 px de large, les blocs du schéma s'empilent. Des flèches ↓ remplace
    - `code` : source Python qui définit `simulate(p) -> dict` ;
    - `params` : `{ id, label, symbol, unit, min, max, step, default, group, block?, log?, advanced? }` ;
    - `diagram` : `{ width, cycle?, zones?, blocks, edges }`. Un bloc a la forme `{ id, title, lines, x, row, w, h, kind, readouts, info? }`. Une zone a la forme `{ label, blocks: [ids] }`. Une arête a la forme `{ from, to, label?, readout?, fromSide?, toSide?, loop? }` ;
-   - `plots` : `{ id, title, xKey, yLabel, hlines?, traces }`. Une trace a la forme `{ key, name, kind, color?, band? }` ;
+   - `plots` : `{ id, title, xKey, yLabel, hlines?, vlines?, traces }`. Une trace a la forme `{ key, name, kind, color?, band? }` ;
    - `readouts` : `{ label, unit, format, compute: (result) => number, hint? }` ;
    - `references` (optionnel) : `{ authors, year, title, where, url?, note? }`, affichées sous « À propos ».
 3. Dans le code Python, délimitez chaque bloc par `# >>> block: <id>` et `# <<< block: <id>`.
@@ -78,6 +78,8 @@ Précisions sur le contrat :
 - `params[].block` : bloc qui porte le paramètre. Le paramètre est rendu dans ce bloc sous forme de curseur compact.
 - `params[].advanced: true` : le paramètre va dans la section « Paramètres de simulation », même s'il a un `block`. Un paramètre sans `block` y va aussi.
 - `readouts[].key` (blocs et arêtes) accepte une clé de résultat ou une fonction `(result, k) => number`.
+- `plots[].vlines` : `[{ key, label? }]`. Chaque entrée trace un trait vertical en pointillés longs à `x = result[key]`, où `key` désigne un scalaire du résultat (ex. `'t_pert'`). `label` s'affiche en haut du trait. La couleur est atténuée (`muted`), distincte du marqueur de l'instant k. Une clé absente ou non numérique est ignorée.
+- Une trace accepte aussi `width` (épaisseur) et `dash` (`'solid'`, `'dash'`, `'dot'`…, valeurs Plotly).
 - `band` accepte `{ varianceKey, n, center?, name? }`, `{ sigmaKey, n }` ou `{ upperKey, lowerKey }`.
 - `format` accepte un nombre de décimales, `'int'`, `'percent'` ou une fonction.
 - `color` accepte `series-1`, `series-2`, `series-3`, `truth`, `muted` ou `reference`.
