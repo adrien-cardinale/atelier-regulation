@@ -1,6 +1,6 @@
 # Atelier de régulation
 
-Application web pédagogique et statique. Elle aide à comprendre un filtre de Kalman, puis un régulateur PID. Elle contient un schéma bloc interactif, des paramètres réglables, des graphes et un éditeur Python. Le code Python s'exécute dans le navigateur avec Pyodide.
+Application web pédagogique et statique. Elle aide à comprendre un filtre de Kalman, un régulateur PID, puis un régulateur LQR (commande optimale par retour d'état). Elle contient un schéma bloc interactif, des paramètres réglables, des graphes et un éditeur Python. Le code Python s'exécute dans le navigateur avec Pyodide.
 
 ## Lancement
 
