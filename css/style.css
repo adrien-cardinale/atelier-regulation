@@ -1034,6 +1034,31 @@ code {
   max-width: 90ch;
 }
 
+.references-title {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.references-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.reference-title {
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.reference-note {
+  color: var(--text-muted);
+}
+
 .equation-inline {
   font-family: var(--font-mono);
   font-size: 12px;

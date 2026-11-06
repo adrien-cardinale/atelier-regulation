@@ -531,6 +531,33 @@
     return state.model.renderSubset(container, (param) => App.params.isInline(param) && param.block === blockId, 'compact');
   }
 
+  function referenceItem(reference) {
+    const item = element('li', 'reference');
+    item.appendChild(element('span', 'reference-authors', reference.authors + ' (' + reference.year + '). '));
+    const title = reference.url ? element('a', 'reference-title', reference.title) : element('span', 'reference-title', reference.title);
+    if (reference.url) {
+      title.href = reference.url;
+      title.target = '_blank';
+      title.rel = 'noopener';
+    }
+    item.appendChild(title);
+    item.appendChild(document.createTextNode('. ' + reference.where + '.'));
+    if (reference.note) item.appendChild(element('span', 'reference-note', ' ' + reference.note));
+    return item;
+  }
+
+  function renderDescription(system) {
+    const container = dom['system-description'];
+    container.innerHTML = system.description;
+    if (!system.references || !system.references.length) return;
+    const block = element('div', 'references');
+    block.appendChild(element('h3', 'references-title', 'Références'));
+    const list = element('ol', 'references-list');
+    system.references.forEach((reference) => list.appendChild(referenceItem(reference)));
+    block.appendChild(list);
+    container.appendChild(block);
+  }
+
   function mountSystem(system) {
     stopPlaying();
     cancelSweep();
@@ -548,7 +575,7 @@
     document.title = system.name + ' · Atelier de régulation';
     dom['system-subtitle'].textContent = system.subtitle;
     dom['about-title'].textContent = 'À propos · ' + system.name;
-    dom['system-description'].innerHTML = system.description;
+    renderDescription(system);
     state.model = App.params.createModel(system.params, storedJson(system.id + ':params'), onParamsChange);
     state.model.renderGroups(dom['params-advanced'], (param) => !App.params.isInline(param));
     renderParamsSummary();

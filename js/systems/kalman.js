@@ -217,11 +217,47 @@ def simulate(p):
     'Essayez : σa très petit (le filtre croit trop son modèle et décroche), σz très petit (il suit le bruit des mesures), P0 petit avec une grosse erreur initiale (convergence lente).</p>'
   ].join('');
 
+  const REFERENCES = [
+    {
+      authors: 'R. E. Kalman',
+      year: 1960,
+      title: 'A New Approach to Linear Filtering and Prediction Problems',
+      where: 'Journal of Basic Engineering, vol. 82, p. 35–45',
+      url: 'https://doi.org/10.1115/1.3662552',
+      note: 'Article d\'origine.'
+    },
+    {
+      authors: 'G. Welch, G. Bishop',
+      year: 1997,
+      title: 'An Introduction to the Kalman Filter',
+      where: 'University of North Carolina at Chapel Hill, rapport TR 95-041',
+      url: 'https://perso.crans.org/club-krobot/doc/kalman.pdf',
+      note: 'Les cinq équations du schéma (prédiction : 1.9–1.10, correction : 1.11–1.13) et le cycle prédire / corriger de la figure 1-2.'
+    },
+    {
+      authors: 'R. R. Labbe',
+      year: 2015,
+      title: 'Kalman and Bayesian Filters in Python',
+      where: 'livre libre (CC BY 4.0), chapitre 7 « Kalman Filter Math »',
+      url: 'https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python',
+      note: 'Matrice Q du modèle « piecewise white noise » : Q = Γ σa² Γᵀ avec Γ = [dt²/2, dt]ᵀ, et formulation numpy du filtre.'
+    },
+    {
+      authors: 'Y. Bar-Shalom, X. R. Li, T. Kirubarajan',
+      year: 2001,
+      title: 'Estimation with Applications to Tracking and Navigation',
+      where: 'Wiley',
+      url: 'https://doi.org/10.1002/0471221279',
+      note: 'Référence classique du modèle à vitesse constante avec accélération bruitée (« discrete white noise acceleration »).'
+    }
+  ];
+
   App.registerSystem({
     id: 'kalman',
     name: 'Filtre de Kalman',
     subtitle: 'Suivi 1D position / vitesse à partir de mesures bruitées',
     description: DESCRIPTION,
+    references: REFERENCES,
     timeKey: 't',
     code: CODE,
     params: [

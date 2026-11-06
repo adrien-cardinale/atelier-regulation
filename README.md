@@ -59,7 +59,8 @@ Sous 700 px de large, les blocs du schéma s'empilent. Des flèches ↓ remplace
    - `params` : `{ id, label, symbol, unit, min, max, step, default, group, block?, log?, advanced? }` ;
    - `diagram` : `{ width, cycle?, zones?, blocks, edges }`. Un bloc a la forme `{ id, title, lines, x, row, w, h, kind, readouts, info? }`. Une zone a la forme `{ label, blocks: [ids] }`. Une arête a la forme `{ from, to, label?, readout?, fromSide?, toSide?, loop? }` ;
    - `plots` : `{ id, title, xKey, yLabel, hlines?, traces }`. Une trace a la forme `{ key, name, kind, color?, band? }` ;
-   - `readouts` : `{ label, unit, format, compute: (result) => number, hint? }`.
+   - `readouts` : `{ label, unit, format, compute: (result) => number, hint? }` ;
+   - `references` (optionnel) : `{ authors, year, title, where, url?, note? }`, affichées sous « À propos ».
 3. Dans le code Python, délimitez chaque bloc par `# >>> block: <id>` et `# <<< block: <id>`.
 4. Ajoutez une balise `<script src="js/systems/mon-systeme.js"></script>` dans `index.html`, avant `App.start()`.
 
